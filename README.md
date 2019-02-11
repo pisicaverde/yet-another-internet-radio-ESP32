@@ -15,7 +15,7 @@ This is a follow-up of the previous [ESP8266 internet radio](https://github.com/
 ### Features ###
 - tested against up to 192 kbps streams. It plays midi files too! (type 0 midi)
 - time, stream title, current song, bitrate, wifi level, buffer level shown on lcd during playback
-- detailed configuration is available using web interface
+- [detailed configuration is available using web interface](https://pisicaverde.github.io/yet-another-internet-radio-ESP32/html-test/index.html)
 - :hearts: LIKE button, for saving "now playing" song title. Save it now, google it later.
 - it may use relays for for delayed speaker coupling (to avoid the "thump" sound at power on)
 - config json file is stored into SPIFFS
