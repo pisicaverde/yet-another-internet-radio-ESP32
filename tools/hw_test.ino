@@ -2,7 +2,7 @@
       YET-INTERNET-RADIO-WITH-ESP32
       *** POWER ON SELF TEST ***
 
-      Schematics: https://github.com/pisicaverde/yet-another-internet-radio-ESP32/blob/master/Schematic_yet-another-internet-radio-ESP32_20181230134413-1.png
+      Schematics: https://github.com/pisicaverde/yet-another-internet-radio-ESP32/
 
       It performs a quick check whether all hardware is properly installed and runs ok.
       - ESP32 capabilities (RAM & flash size, wifi connection)

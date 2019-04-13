@@ -87,7 +87,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
-  WiFi.begin("##########", "##########");
+  WiFi.begin("##########", "##########");  // PUT YOURS HERE
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
   Serial.print(F(" Connected with RSSI "));  Serial.print(WiFi.RSSI());  Serial.println(F(" dBm (should be: -30 ... -70 dBm)"));
 
