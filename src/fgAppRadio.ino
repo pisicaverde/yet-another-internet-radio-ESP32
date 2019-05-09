@@ -1,12 +1,9 @@
 // foreground app 1 - clock
-
-
-// TO DO: to add a clearscreen when changing stations
-
+// TO DO: to add a clearscreen when changing stations, to clear remaining chars from previous screen
+// TO DO: fix random and rare unsyncs from stream (audible hiccups)
 
 void fgAppRadio() {
-      if (fgAppPrev != fgApp) { Serial.println(F("[fgAppRadio] Switching to Internet Radio")); fgAppPrev = fgApp; lcd.clear(); jsonSave(); 
-      }
+      if (fgAppPrev != fgApp) { Serial.println(F("[fgAppRadio] Switching to Internet Radio")); fgAppPrev = fgApp; lcd.clear(); jsonSave(); }
 
       if ( (WiFi.status() != WL_CONNECTED) ) { lcd.setCursor(0,1); lcd.print(F("NO WIFI FOR RADIO")); } // no wifi right now, but it should be handled soon in the main loop by wifiConn()
 
@@ -21,8 +18,7 @@ void fgAppRadio() {
                       Serial.print(F("\thttp://")); Serial.print(stationList[stationNow].host); Serial.print(":"); 
                       Serial.print(stationList[stationNow].port); Serial.println(stationList[stationNow].path);
 
-                      // TO DO : to catch refused connections - currently crashes if ERR_CONNECTION_REFUSED
-                      // TO DO : to catch timeouts and This site can’t be reached 198.105.223.94 took too long to respond.
+                      // TO DO : to catch refused connections - currently crashes if ERR_CONNECTION_REFUSED; TO DO : to catch timeouts and This site can’t be reached 198.105.223.94 took too long to respond.
                       
                       int connectResult = netClient.connect(buf, stationList[stationNow].port); // simply opening connection to remote host
                       Serial.print(F("[fgAppRadio] connectResult=")); Serial.print(connectResult); Serial.print(" ");
@@ -64,7 +60,7 @@ void fgAppRadio() {
     // radio specific keys
     if (keyLast == BUTTON1) { statPrev(); }
     if (keyLast == BUTTON3) { statNext(); }
-    if (keyLast == BUTTON2) { likedSong(); } 
+    if (keyLast == BUTTON2) { likedSong(); keyLast = NOBUTTON; } 
     keyReady = 1; // flag indicating we're ready for key processing
 }
 
@@ -91,7 +87,7 @@ byte read1byte() {
                                                int metaDataStart = metaDataTxt_tmp.indexOf("='") + 2 ; 
                                                int metaDataEnd   = metaDataTxt_tmp.indexOf("';", metaDataStart);
                                                metaDataTxt = "      " + metaDataTxt_tmp.substring(metaDataStart, metaDataEnd) + "      ";// adding spaces just for nicer lcd scrolling
-                                               j = 0 ; metaDataTxt_tmp = "";
+                                               j = 0 ; metaDataTxt_tmp = ""; txtScroll = 0;
                                                Serial.println(metaDataTxt);
                                                }
                      }
@@ -105,9 +101,7 @@ byte read1byte() {
 
 
 void stopDisconnect() {
-  
-    netClient.stop(); Serial.println("[stopDisconnect] closing NetClient"); delay(250);
-    while(netClient.connected()) { if (netClient.available()) { netClient.read(); Serial.print("."); } } // the only way to completely empty the tcp buffer
+
     writePointer = 0;
     readPointer = 0;
     metaInt = 0;
@@ -116,6 +110,13 @@ void stopDisconnect() {
     metaDataTxt = "";
     txtScroll = 0;
     txtDir    = 1; 
+
+    // clearing the buffers; TO DO: to replace zeros with some MIDI chimes
+    for (unsigned int x = 0 ; x < DATA_BUFFER_SIZE ; x++) byteBuffer[x] = 0;
+    for (unsigned int x = 0 ; x < VS_BUFFER_SIZE ; x++) vsBuffer[x] = 0;  
+
+    netClient.stop(); Serial.println("[stopDisconnect] closing NetClient"); delay(250);
+    while(netClient.connected()) { if (netClient.available()) { netClient.read(); Serial.print("."); } } // the only way to completely empty the tcp buffer
 }
 
 
@@ -123,22 +124,22 @@ void stopDisconnect() {
 
 void statPrev() { // switching to previous station
   Serial.print(F("[statPrev] switching to prev - ")); 
-  if (stationNow >= 1)    { Serial.println(F("[OK]")); stationNow-- ; stopDisconnect(); fgAppPrev = 100;} 
-                     else { Serial.println(F("Already at first, switching to last.")); stationNow = stationCnt-1 ;}
+  if (stationNow >= 1)    { Serial.println(F("[OK]")); stationNow-- ; stopDisconnect(); /* fgAppPrev = 100; */ } 
+                     else { Serial.println(F("Already at first, switching to last.")); stationNow = stationCnt-1 ; stopDisconnect();}
   Serial.print(F("[statPrev] current station is: ")); Serial.println(stationNow);
-  stopDisconnect(); 
 }
 
 void statNext() { // switching to next station
   Serial.print(F("[statNext] switching to next - ")); 
-  if (stationNow < stationCnt-1) { Serial.println(F("[OK]")); stationNow++ ; stopDisconnect(); fgAppPrev = 100; } 
-                            else { Serial.println(F("End of list, rewinding to first.")); stationNow = 0 ; }
+  if (stationNow < stationCnt-1) { Serial.println(F("[OK]")); stationNow++ ; stopDisconnect(); /* fgAppPrev = 100; */ } 
+                            else { Serial.println(F("End of list, rewinding to first.")); stationNow = 0 ; stopDisconnect();}
   Serial.print(F("[statNext] current station is: ")); Serial.println(stationNow);
-  stopDisconnect(); 
 }
 
 
-void likedSong() { // saves into spiffs the current playing title
+
+
+void likedSong() { // saves into spiffs the current playing title; note : the lcd is not updated here, but in radioUpdateScreen();
 
   if (millis() < likedSongMillis + 2000) { return;}    // a long debounce (2 s)
 

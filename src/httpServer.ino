@@ -1,3 +1,6 @@
+// TO DO: Liked button should jump to the bottom of the page
+// TO DO: download + upload json from web interface
+// TO DO: random crashes when changing stations while playing may be solved with non blocking station change
 
 void handleRoot() {
   String r = "";
@@ -249,7 +252,7 @@ m += "</dl></fieldset><fieldset style=\"float:left; width: 18%;\"><legend>Device
 <fieldset style=\"float:left; width: 15%;\"><legend>AP2</legend><input type=text name=wifi1_ssid value=\"" + wifi1_ssid + "\">name<p><input type=text name=wifi1_pass value=\"" + wifi1_pass + "\">pass</fieldset>\
 <fieldset style=\"float:left; width: 15%;\"><legend>AP3</legend><input type=text name=wifi2_ssid value=\"" + wifi2_ssid + "\">name<p><input type=text name=wifi2_pass value=\"" + wifi2_pass + "\">pass</fieldset>\
 <div style=\"clear:both;\"></div><button type=\"submit\">Save</button></form>\
-<form action=\"/\" method=\"POST\"><input type=\"hidden\" name=\"formname\" value=\"wifi2\"><button type=\"submit\" name=butt1>Restart to apply changes</button></form></div>\
+<form action=\"/\" method=\"POST\"><input type=\"hidden\" name=\"formname\" value=\"wifi2\"><button type=\"submit\" name=butt1 value=\"RESTART\">Restart to apply changes</button></form></div>\
 <div id=\"liked\" class=\"tabcontent\"><form action=\"/\" method=\"POST\" onsubmit=\"return confirm('Do you really want to delete all liked tracks?');\">\
 <fieldset><legend>Liked tracks:</legend>\
 <input type=\"hidden\" name=\"formname\" value=\"liked\"><pre>";

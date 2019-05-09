@@ -27,7 +27,8 @@ byte ST_FREQLIMIT = 8;
 byte SB_AMPLITUDE = 15;
 byte SB_FREQLIMIT = 15;
 
-#define BUTTON1 32
+#define NOBUTTON 0  // 
+#define BUTTON1 32  // pin number on ESP32 breakout
 #define BUTTON2 27
 #define BUTTON3 14
 #define BUTTON4 12
@@ -137,13 +138,14 @@ byte isClosing = 0;         // flag indicating that we're currently in process o
 
 
 void setup() {
-  pinMode(RELAYPIN, OUTPUT); digitalWrite(RELAYPIN, HIGH); // disconnect speakers, to prevent a "thumping" sound
-
-  Serial.begin(115200); delay(100); Serial.println(F("\r\n\r\n------------------------- START -------------------------"));
-  lcd.begin(); lcd.backlight(); lcd.clear(); lcd.setCursor(0,0); lcd.print("STARTING");
+  pinMode(RELAYPIN, OUTPUT); digitalWrite(RELAYPIN, HIGH); // first of all, disconnect speakers, to prevent a "thumping" sound
   
+  Serial.begin(115200); delay(100); Serial.println(F("\r\n\r\n------------------------- START -------------------------"));
   jsonLoad(); 
-
+  wifiConn(); // wifi init shoud remain before lcd init, despite it takes a lot of time to run; else lcd may go blank during playback and remain so until poweroff
+  
+  lcd.begin(); lcd.backlight(); lcd.clear(); lcd.setCursor(0,0); lcd.print(F("ESP32 radio starting")); lcd.setCursor(0,1); lcd.print(String(String(__DATE__) + " " + String(__TIME__))); 
+  
   pinMode(BUTTON1, INPUT); pinMode(BUTTON2, INPUT); pinMode(BUTTON3, INPUT); pinMode(BUTTON4, INPUT);
   Serial.print(F("[setup] VS1053 GPIO test: ")); 
   pinMode(BREAKOUT_CS, OUTPUT); pinMode(BREAKOUT_DCS, OUTPUT); pinMode(DREQ, INPUT); pinMode(BREAKOUT_RESET, OUTPUT);
@@ -151,17 +153,19 @@ void setup() {
   // TO DO: to set a flag for running without sound (to disable response check from VS)
    
   vsPlayer.softReset(); delay(150); 
-  //sinetest is not really necessary
+  //sinetest is not really necessary; TO DO: replace it with a MIDI0 chime
   //vsPlayer.sineTest(1000, 100); vsPlayer.sineTest(1100, 100); vsPlayer.sineTest(1200, 100); vsPlayer.sineTest(0, 100); 
 
   vsPlayer.sciWrite(VS1053_REG_VOLUME, VS_vol_l * 256 + VS_vol_r);  delay(10); // set vol & bass/treble adj with values read from json
   vsPlayer.sciWrite(VS1053_REG_BASS, SB_FREQLIMIT + SB_AMPLITUDE * 16 + ST_FREQLIMIT * 256 + ST_AMPLITUDE * 4096); delay(10);
 
+
+
   ticker1Hz.attach_ms (1000, func1Hz);  // very slow stuff like screen update
   ticker10Hz.attach_ms(200,  func10Hz); // keyboard processing, http server
   ticker1kHz.attach_ms(1,    func1kHz); // buffer feeding
 
-  lcd.begin(); 
+  Serial.println(F("[setup] End of Setup"));
 }
 
 
@@ -170,7 +174,7 @@ void setup() {
 
 void loop() {    // slow stuff is done here
 
-  wifiConn(); // checks wether it's connected to any wifi hotspot or not, tries to connect to 3 fav hotspots; if not succeed, then creates it's own soft AP
+  //wifiConn(); // checks wether it's connected to any wifi hotspot or not, tries to connect to 3 fav hotspots; if not succeed, then creates it's own soft AP
   
   if (fgApp == 0) { fgAppClock(); }
   if (fgApp == 1) { fgAppRadio(); }

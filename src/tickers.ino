@@ -1,7 +1,13 @@
 
-void func1kHz() { 
+void func1kHz() { // just quick things here
   
-  if ( keyReady == 1 ) keyLast = keyRead(); 
+  if ( keyReady == 1 ) { // reading keys if it's ready to
+     if (digitalRead(BUTTON1)) keyLast = BUTTON1;
+     if (digitalRead(BUTTON2)) keyLast = BUTTON2;
+     if (digitalRead(BUTTON3)) keyLast = BUTTON3;
+     if (digitalRead(BUTTON4)) keyLast = BUTTON4;
+     keyReady == 0;
+  }
 
   // feeding the VS buffer; if there is anything in the buffer, it will play it.
   if ((usedBuffer() >= VS_BUFFER_SIZE)) {       // if there is enough data to compose the VS_BUFFER,
@@ -22,18 +28,23 @@ void func1kHz() {
 void func10Hz() {
   server.handleClient();
  
-  if (keyLast == BUTTON4) { fgAppPrev = fgApp; fgApp++; } 
-  if (fgApp >= fgAppMax) { fgApp = 0; fgAppPrev = fgAppMax - 1 ; delay(100); }
-  keyReady = 0; // will not procees further keystrokes until explicitely granted by fgApp
+  if (keyLast == BUTTON4) { fgAppPrev = fgApp; fgApp++; } // fgApps switcher button was pressed
+  
+  if (fgApp >= fgAppMax) { fgApp = 0; fgAppPrev = fgAppMax - 1 ; /* delay(100); */ }  // reset app no if on the last position
+  
+  keyReady = 0; // make sure it will not process further keystrokes in func1Hz() until explicitely granted by a fgApp
 
   // schedule ckeck
-  if (WiFi.status() == WL_CONNECTED) updateRtc(); // update time only if there is wifi, otherwise it should not reflect actual time
+  if (WiFi.status() == WL_CONNECTED) updateRtc(); // update time only if there is wifi
 
 }
 
 
 
 void func1Hz() { 
+
+//wifiConn(); 
+  
   // can't refresh screen here --> kernel panic :(
   // very blocking - should remain here or commented out completely
    nrConns = WiFi.softAPgetStationNum();
@@ -57,7 +68,7 @@ void func1Hz() {
                                          } 
                                     else { if (fgApp == 1) { // if it's playing internet radio, always switch to pause
                                                             fgAppPrev = fgApp; fgApp = 0; 
-                                                            Serial.printf("[func1Hz] It is %u:%u , should stop\r\n" , rtc_h, rtc_mn); 
+                                                            Serial.printf("[func1Hz] It is %u:%u , out of working hours. I should stop\r\n" , rtc_h, rtc_mn); 
                                                           }
                                          }
                           }

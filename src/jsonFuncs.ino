@@ -1,9 +1,12 @@
+// TO DO: backup & restore for the json file
+
+
 
 void jsonSave() {
   // serialising vars and saving json to spiffs
   // extremely slow and blocking ; it will interrupt playback for a moment; it can't be used in real time, simultaneously with ticker funcs
 
-Serial.print(F("[jsonSave] saving data to json..."));
+Serial.print(F("[jsonSave] Saving state & config updates to json..."));
   DynamicJsonBuffer jsonBufferX(10000);
   JsonObject& root = jsonBufferX.createObject();
 
@@ -132,126 +135,11 @@ void writeDefaultJson() {
   File file = SPIFFS.open("/irconfig.json", "w"); if(!file){ Serial.println(F("[writeDefaultJson] Failed to open file for writing")); die(); }
 
   if(file.print("\
-{\"user_agent\":\"iRadio\",\"ap_pass\":\"12345678\",\"wifi_channel\":10,\"VS_vol_l\":50,\"VS_vol_r\":70,\"ST_AMPLITUDE\":15,\"ST_FREQLIMIT\":8,\"SB_AMPLITUDE\":15,\"SB_FREQLIMIT\":15,\"stationNow\":0,\"fgApp\":0,\"autoStartH\":8,\"autoStartM\":0,\"autoStopH\":18,\"autoStopM\":0,\"autoDoW\":127,\"wifi\":[{\"ssid\":\"YOURWIFI\",\"pass\":\"YOURPASS\"},{\"ssid\":\"\",\"pass\":\"\"},{\"ssid\":\"\",\"pass\":\"\"}],\"station\":[{\"title\":\"Radio Shantz\",\"host\":\"82.78.220.54\",\"path\":\"/stream.mp3\",\"port\":8000}]}\
+{\"user_agent\":\"iRadio\",\"ap_pass\":\"12345678\",\"wifi_channel\":10,\"VS_vol_l\":50,\"VS_vol_r\":70,\"ST_AMPLITUDE\":15,\"ST_FREQLIMIT\":8,\"SB_AMPLITUDE\":15,\"SB_FREQLIMIT\":15,\"stationNow\":3,\"fgApp\":0,\"autoStartH\":8,\"autoStartM\":0,\"autoStopH\":18,\"autoStopM\":0,\"autoDoW\":127,\"wifi\":[{\"ssid\":\"wifi\",\"pass\":\"azero1234\"},{\"ssid\":\"\",\"pass\":\"\"},{\"ssid\":\"\",\"pass\":\"\"}],\"station\":[{\"title\":\"Radio Shantz\",\"host\":\"82.78.220.54\",\"path\":\"/stream.mp3\",\"port\":8000}]}\
 "))   { Serial.println(F("[writeDefaultJson] File was written, you should reset now.")); }
  else { Serial.println(F("[writeDefaultJson] File write failed. Dunno what to do next.")); }
 
-}
-
-
-
-
-
-
-
-void wifiConn(){
-    // if not connected, nor in station mode, will try 3 connections; if failed, it will set esp32 to softAp mode
-    
-    if ( (WiFi.status() != WL_CONNECTED) && (softApActive == 0) )  // not connected to any AP nor AP MODE (usually after cold start or reset)
-        { 
-          WiFi.mode(WIFI_STA); // switch to station mode and tries connecting           
-          if(!tryWifiConnect(wifi0_ssid, wifi0_pass, wifi_channel) && 
-             !tryWifiConnect(wifi1_ssid, wifi1_pass, wifi_channel) && 
-             !tryWifiConnect(wifi2_ssid, wifi2_pass, wifi_channel)) { Serial.println("[wifiConn] All 3 APs returned error.");}
-              else { //init and get the time
-                      Serial.print(F("[wifiConn] Getting time from NTP... "));
-                      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer); 
-                      updateRtc();                      
-                      Serial.println(&rtc, "[OK] it is %A, %d %B %Y %H:%M:%S");
-                    }
-          if (WiFi.status() == WL_DISCONNECTED )  { // if failed to connect to all 3 prev APs, create it's own AP
-               Serial.print("CREATING AP ");
-               WiFi.mode(WIFI_AP);
-               Serial.print(WiFi.softAP(user_agent, ap_pass, wifi_channel, 0, 4) ? " Soft AP created, accepting connections." : " Error creating AP");
-               Serial.println(WiFi.softAPConfig(local_IP, gateway, subnet) ? " Soft AP set." : " Soft AP set failed.");
-               Serial.print(F("[LOOP] Server IP = ")); Serial.println(WiFi.softAPIP()); 
-               Serial.printf("[LOOP] connect to SSID %s with pass %s\r\n", user_agent, ap_pass);
-               softApActive = 1;
-        
-          }
-               server.on("/", handleRoot); server.begin(); Serial.println(F("[wifiConn] HTTP server started")); // registering http server
-        }
+// TO DO: after a writeDefaultJson program should die with a message ; after reset, it will run normally with the new file
 
 }
-
-
-
-
-boolean tryWifiConnect(char* ssid, char* pass, byte sec) {  
-  // TO DO: SKIP IF RSSI BELOW CERTAIN VAL ; check existence of specified APs before waiting 10s
-  // TO DO: return if blank params are received (5 positions in json and only 2 used)
-  // TO DO: add channel in json and html config for wifi connection
-
-  Serial.printf("[tryWifiConnect] Trying SSID:%s PASS:%s while %u s ", ssid, pass, sec);
-  if ( WiFi.status() == WL_CONNECTED) { Serial.println("[ALREADY+SKIP]"); return(0) ; } // if already connected
-
-  lcd.setCursor(0,3); lcd.print("Trying:             "); lcd.setCursor (7, 3); lcd.print(ssid); 
-
-  int c = 0;
-  unsigned long starttime = millis();
-
-  WiFi.setHostname(user_agent);
-  WiFi.begin(ssid, pass);
-
-  while ( (WiFi.status() != WL_CONNECTED) & (millis() < starttime + sec*1000) ) {
-    lcd.setCursor(19,3);
-    switch(c) {
-      case 0: lcd.print("-"); break;
-      case 1: lcd.print((char)B01100000); break;
-      case 2: lcd.print("|"); break;
-      case 3: lcd.print("/"); break;
-    };
-    c = c+1; if (c == 4) c = 0;
-    delay(500);
-    Serial.print(".");
-  }
-  if (WiFi.status() == WL_CONNECTED) {   IPAddress ip = WiFi.localIP(); Serial.print(F(" [CONNECTED] my IP is ")); Serial.println(ip) ; return(1); }
-    else { Serial.println(F(" [ERROR]")); return(0); }
-}
-
-
-
-
-
-void die() { 
-  // TO DO: this should be replaced with a more elegant solution
-  Serial.println(F("[die] DEAD BY AN ERROR")); while (1) {yield();} 
-  } 
-
-
-
-
-int usedBuffer() {
-  // the function returns the number of bytes in use in circular buffer
-  return(( DATA_BUFFER_SIZE + writePointer - readPointer ) % DATA_BUFFER_SIZE); 
-  }
-
-
-
-
-byte keyRead(){ 
- if (keyReady == 1) {// if the previus keypress was treated
-                     if (digitalRead(BUTTON1)) return(BUTTON1);
-                     if (digitalRead(BUTTON2)) return(BUTTON2);
-                     if (digitalRead(BUTTON3)) return(BUTTON3);
-                     if (digitalRead(BUTTON4)) return(BUTTON4);
-                    }
- return(0) ; 
-}
-
-
-
-void updateRtc() {
-  if(!getLocalTime(&rtc)){ Serial.println("[updateRtc] Failed to obtain time"); return; }
-  rtc_y  = rtc.tm_year + 1900;
-  rtc_m  = rtc.tm_mon + 1;
-  rtc_d  = rtc.tm_mday;
-  rtc_h  = rtc.tm_hour;
-  rtc_mn = rtc.tm_min;
-  rtc_s  = rtc.tm_sec;
-  rtc_dw = rtc.tm_wday + 0;
-  temp_celsius = ( temprature_sens_read() - 32 ) / 1.8;
-}
-
-
 
