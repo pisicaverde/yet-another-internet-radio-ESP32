@@ -6,8 +6,6 @@ It plays anything that VS1053 may decode.
 It's a follow-up of the previous [ESP8266 internet radio](https://github.com/pisicaverde/yet-another-internet-radio/), now defunct. 
 This doc is rather a notice to myself, in case I'll try to debug it after a long time.
 
-*I'm trying to get it to a commercial quality level. Until then, enjoy its issues and lots of ToDo's :)*
-
 ### Features ###
 - tested against up to 192 kbps streams. It plays even MIDI files! (type 0 MIDI)
 - controlled via LCD & 4 buttons and through a nice, html5, web interface
@@ -22,6 +20,8 @@ This doc is rather a notice to myself, in case I'll try to debug it after a long
 - RTC using ESP32's internal clock, updated from NTP continuously
 - bass, treble and separate left and right volume setting using VS1053 registers;
 - wifiManager-like functionality - if none of saved APs is available, it creates its own, for accessing config page.
+
+It's stable, all features are working, but with issues and lots of ToDo's.
 
 ### Component list: ###
 - [ESP32 DevKitC VIB](https://www.tme.eu/en/details/esp32-devkitc-vib/development-tools-for-data-transmission/espressif/) 
