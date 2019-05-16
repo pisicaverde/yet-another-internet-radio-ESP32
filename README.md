@@ -8,18 +8,18 @@ This doc is rather a notice to myself, in case I'll try to debug it after a long
 
 ### Features ###
 - tested against up to 192 kbps streams. It plays even MIDI files! (type 0 MIDI)
-- controlled via LCD & 4 buttons and through a nice, html5, web interface
+- controlled via LCD & 4 buttons and through a nice, html5, [web interface](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/browser_status_page.jpg)
 - time, stream title, current song, bitrate, wifi level, buffer level shown on LCD during playback
 - detailed configuration is available using web interface
-- :hearts: LIKE button, for saving "now playing" song title into flashmem. *Fave it now, google it later.*
+- :hearts: [LIKE button](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/browser_liked.jpg), for saving "now playing" song title into flashmem. *Fave it now, google it later.*
 - using MCU controlled relays for for delayed speaker coupling (to avoid the "thump" sound at power on)
 - configuration file is stored as a json into SPIFFS
 - at first run or corrupted spiffs, it will create a default json config
 - in case of ESP32 crash & restart, it continues in the previous state
-- scheduler for unattended use, with selectable running days and hours
+- [scheduler](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/browser_scheduler.jpg) for unattended use, with selectable running days and hours
 - RTC using ESP32's internal clock, updated from NTP continuously
-- bass, treble and separate left and right volume setting using VS1053 registers;
-- wifiManager-like functionality - if none of saved APs is available, it creates its own, for accessing config page.
+- [bass, treble and separate left and right volume setting](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/browser_audio_settings.jpg) using VS1053 registers;
+- wifiManager+wifiMulti-like functionality - yet rudimentary;  it will try to [connect to several APs](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/browser_wifi_settings.jpg); if none of them is available, it creates its own, for accessing config page.
 
 It's stable, all features are working, but with issues and lots of ToDo's.
 
@@ -75,10 +75,10 @@ All config is stored in the flash memory (/irconfig.json). At first run or if th
 }
 ```
 ### How it works ###
-There can be created several "apps", but only one runs in foreground. Currently there are 4 apps:
-1) clock (shown in stand by mode)
-2) radio
-3) station list
-4) info (not really necessary, done just as a showcase)
+There can be created several "apps", but only one runs in foreground. Currently there are 3 apps:
+1) [clock & info](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/lcd_clock.jpg) (shown in stand by mode)
+2) [radio](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/lcd_play.jpg)
+3) [station list](https://raw.githubusercontent.com/pisicaverde/yet-another-internet-radio-ESP32/master/images/lcd_list.jpg)
+
 Several can be added, for example a Bluetooth speaker app, MIDI player or a weatherundeground.com client.
 You may switch between them from the web interface or by pushing `button4`.
