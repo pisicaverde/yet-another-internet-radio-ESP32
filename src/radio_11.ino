@@ -27,18 +27,15 @@ byte ST_FREQLIMIT = 8;
 byte SB_AMPLITUDE = 15;
 byte SB_FREQLIMIT = 15;
 
-#define NOBUTTON 0  // 
 #define BUTTON1 32  // pin number on ESP32 breakout
 #define BUTTON2 27
 #define BUTTON3 14
 #define BUTTON4 12
-byte keyLast  = 0;  // contains the last pressed key, even if meanwhile it was depressed; TO DO: read in parallel mode
-byte keyReady = 1;  // flag meaning we're ready to process a keystroke
 
 #define RELAYPIN 15  // pin for relay command (pull up pin)
 
 byte fgApp = 0;       // foreground app to run (0 = clock, 1 = internet radio, 2 = station list, 3 = setup)
-byte fgAppMax = 4;    // total number of apps + 1
+byte fgAppMax = 3;    // total number of apps + 1
 byte fgAppPrev = 100; // previous app
 
 IPAddress local_IP(192,168,0,1);
@@ -105,8 +102,9 @@ int    tm_isdst; //   Daylight Savings flag.
 */  
 
 unsigned long prvMillis = 0;
-unsigned long likedSongMillis = 0;  // timer for debouncing pressed Like button
-
+unsigned long likeSongMillis = 0;  // timer for debouncing pressed Like button
+unsigned long slowScrMillis = 0; // timer for slower screen refresh
+boolean dots = 0;
 
 #ifdef __cplusplus      // necessary for reading temperature in esp32
 extern "C" {
@@ -133,35 +131,43 @@ byte stationNow = 0 ;       // id-ul postului playat acum, din stationList
 byte prevStationNow = 0;    // used to check if we've just changed the station; used in showStdStat(), in order to not clear screen if station is not changed
 byte isClosing = 0;         // flag indicating that we're currently in process of changing stations and disconnecting, to prevent opening a connection while another one is closing
 
-
-
+// big numbers definition
+byte c0[8] = { B11111,B10001,B10001,B10001,B10001,B10001,B10001,B10001 };
+byte c1[8] = { B00001,B00001,B00001,B00001,B00001,B00001,B00001,B00001 };
+byte c2[8] = { B11111,B10001,B00001,B00001,B00001,B00001,B00001,B00001 };
+byte c3[8] = { B11111,B00001,B00001,B00001,B00001,B00001,B00001,B01111 };
+byte c4[8] = { B10001,B10001,B10001,B10001,B10001,B10001,B10001,B11111 };
+byte c5[8] = { B11111,B10000,B10000,B10000,B10000,B10000,B10000,B11111 };
+byte c6[8] = { B11111,B10001,B10001,B10001,B10001,B10001,B10001,B11111 };
+byte c7[8] = { B00001,B00001,B00001,B00001,B00001,B00001,B10001,B11111 };
 
 
 void setup() {
   pinMode(RELAYPIN, OUTPUT); digitalWrite(RELAYPIN, HIGH); // first of all, disconnect speakers, to prevent a "thumping" sound
   
   Serial.begin(115200); delay(100); Serial.println(F("\r\n\r\n------------------------- START -------------------------"));
-  jsonLoad(); 
-  wifiConn(); // wifi init shoud remain before lcd init, despite it takes a lot of time to run; else lcd may go blank during playback and remain so until poweroff
-  
+
   lcd.begin(); lcd.backlight(); lcd.clear(); lcd.setCursor(0,0); lcd.print(F("ESP32 radio starting")); lcd.setCursor(0,1); lcd.print(String(String(__DATE__) + " " + String(__TIME__))); 
+
+  jsonLoad(); 
+  wifiConn(); 
+
+  lcd.createChar(0, c0); lcd.createChar(1, c1); lcd.createChar(2, c2); lcd.createChar(3, c3); lcd.createChar(4, c4); lcd.createChar(5, c5); lcd.createChar(6, c6); lcd.createChar(7, c7);
   
   pinMode(BUTTON1, INPUT); pinMode(BUTTON2, INPUT); pinMode(BUTTON3, INPUT); pinMode(BUTTON4, INPUT);
   Serial.print(F("[setup] VS1053 GPIO test: ")); 
   pinMode(BREAKOUT_CS, OUTPUT); pinMode(BREAKOUT_DCS, OUTPUT); pinMode(DREQ, INPUT); pinMode(BREAKOUT_RESET, OUTPUT);
   if (!vsPlayer.begin()) { Serial.println(F("[ERROR] VS1053 not found. Program will continue ERRATICLY without sound.")); } else { Serial.println(F("[OK]"));  }  
-  // TO DO: to set a flag for running without sound (to disable response check from VS)
+  // TO DO: to set a flag if running without sound (to disable response check from VS)
    
-  vsPlayer.softReset(); delay(150); 
+  vsPlayer.softReset(); delay(50); 
   //sinetest is not really necessary; TO DO: replace it with a MIDI0 chime
   //vsPlayer.sineTest(1000, 100); vsPlayer.sineTest(1100, 100); vsPlayer.sineTest(1200, 100); vsPlayer.sineTest(0, 100); 
 
   vsPlayer.sciWrite(VS1053_REG_VOLUME, VS_vol_l * 256 + VS_vol_r);  delay(10); // set vol & bass/treble adj with values read from json
   vsPlayer.sciWrite(VS1053_REG_BASS, SB_FREQLIMIT + SB_AMPLITUDE * 16 + ST_FREQLIMIT * 256 + ST_AMPLITUDE * 4096); delay(10);
 
-
-
-  ticker1Hz.attach_ms (1000, func1Hz);  // very slow stuff like screen update
+  ticker1Hz.attach_ms (900, func1Hz);  // very slow stuff; in fact running a bit faster than 1 s, to not to lose seconds
   ticker10Hz.attach_ms(200,  func10Hz); // keyboard processing, http server
   ticker1kHz.attach_ms(1,    func1kHz); // buffer feeding
 
@@ -179,6 +185,4 @@ void loop() {    // slow stuff is done here
   if (fgApp == 0) { fgAppClock(); }
   if (fgApp == 1) { fgAppRadio(); }
   if (fgApp == 2) { fgAppList();  }
-  if (fgApp == 3) { fgAppInfo(); }
-
 }

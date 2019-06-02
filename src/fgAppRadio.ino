@@ -1,14 +1,15 @@
 // foreground app 1 - clock
 // TO DO: to add a clearscreen when changing stations, to clear remaining chars from previous screen
 // TO DO: fix random and rare unsyncs from stream (audible hiccups)
+// TO DO: to catch all station errors, including crashing right after OPEN
 
 void fgAppRadio() {
-      if (fgAppPrev != fgApp) { Serial.println(F("[fgAppRadio] Switching to Internet Radio")); fgAppPrev = fgApp; lcd.clear(); jsonSave(); }
+      if (fgAppPrev != fgApp) { Serial.println(F("[fgAppRadio] Switching to Internet Radio")); fgAppPrev = fgApp; lcd.clear(); lcd.print("Connecting..."); jsonSave(); delay(100);}
 
       if ( (WiFi.status() != WL_CONNECTED) ) { lcd.setCursor(0,1); lcd.print(F("NO WIFI FOR RADIO")); } // no wifi right now, but it should be handled soon in the main loop by wifiConn()
 
       else {
-              if (millis() >= prvMillis + 1000) { radioUpdateScreen(); prvMillis = millis(); } // screen update
+              radioUpdateScreen(); // screen update 
 
               if (!netClient.connected() && (isClosing != 1) ) {    // if not connected nor in process of disconnecting
                       char buf[50];
@@ -57,18 +58,17 @@ void fgAppRadio() {
                   while (netClient.available() && (  !((writePointer + 1) % DATA_BUFFER_SIZE == readPointer)    ) ) {read1byte(); }
               } 
       
-    // radio specific keys
-    if (keyLast == BUTTON1) { statPrev(); }
-    if (keyLast == BUTTON3) { statNext(); }
-    if (keyLast == BUTTON2) { likedSong(); keyLast = NOBUTTON; } 
-    keyReady = 1; // flag indicating we're ready for key processing
+   if (digitalRead(BUTTON1)) statPrev();
+   if (digitalRead(BUTTON2)) likeSong(); 
+   if (digitalRead(BUTTON3)) statNext();  
+   if (digitalRead(BUTTON4)) fgAppSwitch();
 }
 
 
 
 
 byte read1byte() {
-// reading 1 byte and treating it according to its position in stream
+// reading 1 byte and treating it according to its position in stream. This is the heart and soul of the internet radio.
 
     if (( i < metaInt ) && (  !((writePointer + 1) % DATA_BUFFER_SIZE == readPointer)    ) ) { // the mp3 data zone
              byteBuffer[writePointer] = netClient.read();
@@ -84,10 +84,11 @@ byte read1byte() {
                      { char tmpChr = netClient.read() ; 
                        metaDataTxt_tmp += tmpChr; j++; 
                        if (j >= metaLength) {  // the metadata string is complete
+                                               //Serial.println(metaDataTxt_tmp);
                                                int metaDataStart = metaDataTxt_tmp.indexOf("='") + 2 ; 
-                                               int metaDataEnd   = metaDataTxt_tmp.indexOf("';", metaDataStart);
+                                               int metaDataEnd   = metaDataTxt_tmp.indexOf("';"/*, metaDataStart*/);
                                                metaDataTxt = "      " + metaDataTxt_tmp.substring(metaDataStart, metaDataEnd) + "      ";// adding spaces just for nicer lcd scrolling
-                                               j = 0 ; metaDataTxt_tmp = ""; txtScroll = 0;
+                                               j = 0 ; metaDataTxt_tmp = ""; txtScroll = 0; txtDir = 1;
                                                Serial.println(metaDataTxt);
                                                }
                      }
@@ -107,7 +108,9 @@ void stopDisconnect() {
     metaInt = 0;
     metaLength = 0;
     i = 0; 
-    metaDataTxt = "";
+    metaBR = "0";
+    metaStationName = "                    ";
+    metaDataTxt     = "                    ";
     txtScroll = 0;
     txtDir    = 1; 
 
@@ -115,8 +118,9 @@ void stopDisconnect() {
     for (unsigned int x = 0 ; x < DATA_BUFFER_SIZE ; x++) byteBuffer[x] = 0;
     for (unsigned int x = 0 ; x < VS_BUFFER_SIZE ; x++) vsBuffer[x] = 0;  
 
-    netClient.stop(); Serial.println("[stopDisconnect] closing NetClient"); delay(250);
+    netClient.stop(); Serial.println("[stopDisconnect] closing NetClient"); delay(100);
     while(netClient.connected()) { if (netClient.available()) { netClient.read(); Serial.print("."); } } // the only way to completely empty the tcp buffer
+
 }
 
 
@@ -124,14 +128,14 @@ void stopDisconnect() {
 
 void statPrev() { // switching to previous station
   Serial.print(F("[statPrev] switching to prev - ")); 
-  if (stationNow >= 1)    { Serial.println(F("[OK]")); stationNow-- ; stopDisconnect(); /* fgAppPrev = 100; */ } 
+  if (stationNow >= 1)    { Serial.println(F("[OK]")); stationNow-- ; stopDisconnect(); fgAppPrev = 100; } 
                      else { Serial.println(F("Already at first, switching to last.")); stationNow = stationCnt-1 ; stopDisconnect();}
   Serial.print(F("[statPrev] current station is: ")); Serial.println(stationNow);
 }
 
 void statNext() { // switching to next station
   Serial.print(F("[statNext] switching to next - ")); 
-  if (stationNow < stationCnt-1) { Serial.println(F("[OK]")); stationNow++ ; stopDisconnect(); /* fgAppPrev = 100; */ } 
+  if (stationNow < stationCnt-1) { Serial.println(F("[OK]")); stationNow++ ; stopDisconnect(); fgAppPrev = 100; } 
                             else { Serial.println(F("End of list, rewinding to first.")); stationNow = 0 ; stopDisconnect();}
   Serial.print(F("[statNext] current station is: ")); Serial.println(stationNow);
 }
@@ -139,13 +143,13 @@ void statNext() { // switching to next station
 
 
 
-void likedSong() { // saves into spiffs the current playing title; note : the lcd is not updated here, but in radioUpdateScreen();
+void likeSong() { // saves into spiffs the current playing title; note : the lcd is not updated here, but in radioUpdateScreen();
 
-  if (millis() < likedSongMillis + 2000) { return;}    // a long debounce (2 s)
+  if (millis() < likeSongMillis + 2000) { return;}    // a long debounce (2 s)
 
-  likedSongMillis = millis();
+  likeSongMillis = millis();
  
-  Serial.println(F("[likedSong] Appending currently playing song to string."));
+  Serial.println(F("[likeSong] Appending currently playing song to string."));
   if(!SPIFFS.begin(true)){ Serial.println(F("[JsonSetup] An Error has occurred while mounting SPIFFS, aborting.")); die(); }
   File file = SPIFFS.open("/songlist.txt", "a"); if(!file){ Serial.println(F("[jsonUpdate] Failed to open file for writing, aborting.")); die(); }
   String txt = "->" + metaDataTxt + "\r\n"; // TO DO: substring (3, n-3) ; TO DO: adding timestamps in front of song titles and station name
@@ -154,34 +158,55 @@ void likedSong() { // saves into spiffs the current playing title; note : the lc
 }
 
 
+
+
  
 void radioUpdateScreen() {  // updating screen in internetradio mode
 
-  // if we're during a likedSong debounce, we'll display only the confirmation message
-  if (millis() < likedSongMillis + 2000) { lcd.clear(); lcd.setCursor(0,0); lcd.print("SAVED"); return;}   // TO DO: something nicer on display
+  // if we're during a likeSong debounce, we'll display only the confirmation message
+  if (millis() < likeSongMillis + 2000) { // total operation: 2 s
+    if (millis() < likeSongMillis + 100) { lcd.clear(); }
+    if ((millis() > likeSongMillis + 100) && (millis() < likeSongMillis + 200))   { lcd.setCursor(0,0); lcd.print("SAVED"); } 
+    if ((millis() > likeSongMillis + 1000) && (millis() < likeSongMillis + 1100)) { lcd.setCursor(0,1); lcd.print("*****"); }
+    return;
+  }
+
+  // text scrolls at 250 ms refresh
+  if (millis() >= prvMillis + 250) {   
+          lcd.setCursor(0,2); lcd.print(metaDataTxt.substring(txtScroll, txtScroll+19)); prvMillis = millis(); 
+          if (txtScroll == 0) txtDir = 1;
+          if (txtScroll == (metaDataTxt.length() - 19) ) txtDir = -1;
+          txtScroll = txtScroll + txtDir;
+          prvMillis = millis();
+} 
 
 
-  lcd.setCursor(0,0); lcd.printf("Station %u/%u", stationNow+1, stationCnt);
-  lcd.setCursor(15,0); 
-  
-  lcd.print( ( rtc_h <= 9 ? "0" : "") +  String(rtc_h) + " " + ( rtc_mn <= 9 ? "0" : "") + String(rtc_mn) ); 
-  if (rtc_s % 2) { lcd.setCursor(17,0); lcd.print(":"); } else { lcd.setCursor(17,0); lcd.print(" "); } 
-  
-  lcd.setCursor(0,1); lcd.print(metaStationName.substring(0,20));
-  lcd.setCursor(0,2); lcd.print(metaDataTxt.substring(txtScroll, txtScroll+19));
-  lcd.setCursor(0,3); lcd.print(metaBR); lcd.print("kbps  ");
-  lcd.setCursor(8,3); lcd.print("B:"); lcd.print(map(usedBuffer(), 0, DATA_BUFFER_SIZE, 0, 99), DEC); lcd.print("% ");
-  
-  int db = WiFi.RSSI(); 
-  int q;
-  if (db >= -50) { q = 100; } else if (db <= -100) { q = 0 ;}
-  else {q = 2 * ( WiFi.RSSI() + 100) ; } // q este RSSI in procente
-  lcd.setCursor(14,3); lcd.printf("W:%u%%",q); 
-  if (q < 100) lcd.print(" "); // to clear a residual % symbol
 
-  if (txtScroll == 0) txtDir = 1;
-  if (txtScroll == (metaDataTxt.length() - 19) ) txtDir = -1;
-  txtScroll = txtScroll + txtDir;
+  if ( millis() >= slowScrMillis + 1000 ) // this info is updated at different speed
+    { 
+      lcd.setCursor(0,0);  lcd.printf("Station %u/%u  ", stationNow+1, stationCnt);
+      lcd.setCursor(15,0); lcd.print( ( rtc_h <= 9 ? "0" : "") +  String(rtc_h) );
+      lcd.setCursor(18,0); lcd.print( ( rtc_mn <= 9 ? "0" : "") + String(rtc_mn) ); 
+          
+      lcd.setCursor(0,1); lcd.print(metaStationName.substring(0,20));
+      lcd.setCursor(0,3); lcd.print(metaBR); lcd.print("kbps  ");
+      lcd.setCursor(8,3); lcd.print("B:"); lcd.print(map(usedBuffer(), 0, DATA_BUFFER_SIZE, 0, 99), DEC); lcd.print("% "); 
+
+      lcd.setCursor(17,0); 
+      if (dots) { lcd.print(":"); dots = !dots; } else {lcd.print(" "); dots = !dots; }
+
+      int db = WiFi.RSSI(); 
+      int q;
+      if (db >= -50) { q = 100; } else if (db <= -100) { q = 0 ;}
+      else {q = 2 * ( WiFi.RSSI() + 100) ; } // q este RSSI in procente
+      lcd.setCursor(14,3); lcd.printf("W:%u%%",q); 
+      if (q < 100) lcd.print(" "); // to clear a residual % symbol
+      
+      slowScrMillis = millis(); 
+      
+     } 
+
+
 
 }
 

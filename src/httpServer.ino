@@ -5,43 +5,45 @@
 void handleRoot() {
   String r = "";
   float d = millis();
-  Serial.print("[handleRoot] Page requested by: ");
+  Serial.print(F("[handleRoot] Page requested by: "));
   Serial.print(server.header("User-Agent:"));
   Serial.println(server.header("Host:"));
 
-  if(!SPIFFS.begin(true)){ Serial.println("[handleRoot] ERROR ACCESING SPIFFS"); }
+  if(!SPIFFS.begin(true)) { Serial.println(F("[handleRoot] ERROR ACCESING SPIFFS")); }
   File file;
 
   String tabName = server.arg(0); if (tabName == "") tabName = "stat";
   
   if (tabName == "stat") {     
-      if (server.arg(1) == "clock") { Serial.println("[handleRoot] --> CLOCK"); fgApp = 0; fgAppPrev = 100; r = "Switched to clock"; }
-      if (server.arg(1) == "play")  { Serial.println("[handleRoot] --> PLAY");  fgApp = 1; fgAppPrev = 100; r = "Switched to internet radio"; }
-      if (server.arg(1) == "like")  { Serial.println("[handleRoot] --> LIKED SONG"); likedSong(); r = "Saved to Liked Songs"; }
-      if (server.arg(1) == "prev")  { Serial.println("[handleRoot] --> PREV"); if (stationNow >= 1)           { Serial.println(" OK"); isClosing = 1; stopDisconnect(); stationNow--; fgAppPrev = 0; isClosing = 0; }  }
-      if (server.arg(1) == "next")  { Serial.println("[handleRoot] --> NEXT"); if (stationNow < stationCnt-1) { Serial.println(" OK"); isClosing = 1; stopDisconnect(); stationNow++; fgAppPrev = 0; isClosing = 0; }  }
+      if (server.arg(1) == "clock") { Serial.println(F("[handleRoot] --> CLOCK")); fgApp = 0; fgAppPrev = 100; r = "Switched to clock"; }
+      if (server.arg(1) == "play")  { Serial.println(F("[handleRoot] --> PLAY"));  fgApp = 1; fgAppPrev = 100; r = "Switched to internet radio"; }
+      if (server.arg(1) == "like")  { Serial.println(F("[handleRoot] --> LIKED SONG")); likeSong(); r = "Saved to Liked Songs"; }
+      if (server.arg(1) == "prev")  { Serial.println(F("[handleRoot] --> PREV")); if (stationNow >= 1)           { Serial.println(" OK"); isClosing = 1; stopDisconnect(); stationNow--; fgAppPrev = 0; isClosing = 0; }  }
+      if (server.arg(1) == "next")  { Serial.println(F("[handleRoot] --> NEXT")); if (stationNow < stationCnt-1) { Serial.println(" OK"); isClosing = 1; stopDisconnect(); stationNow++; fgAppPrev = 0; isClosing = 0; }  }
   }
   
   if (tabName == "pls") {     
       if (server.argName(1) == "butt1")  { isClosing = 1; stopDisconnect(); stationNow = server.arg(1).toInt(); fgAppPrev = 0; fgApp = 1; isClosing = 0; }
       
-      if (server.argName(1) == "butt2")  {   // delete a preset
-                                             byte rem = server.arg(1).toInt(); 
-                                             if (stationNow >= rem) stationNow--; // move pointer up
-                                             Serial.printf("--> Should kill station # %u\r\n", rem); 
-                                             for(byte i = rem; i < stationCnt - 1; i++) stationList[i] = stationList[i + 1];
-                                             stationCnt--;
-                                             jsonSave();
-                                          }
-      if (server.argName(1) == "butt3")  {   // move up
-                                            byte r = server.arg(1).toInt(); // this one will be moved up 1 position
-                                            if (stationNow == r) { stationNow = r - 1; } // if we moved the preset currently playing (move pointer up)
-                                                  else if (stationNow == r - 1) stationNow = r ;
-                                            stations stationTmp = stationList[r - 1]; // making a copy
-                                            stationList[r-1] = stationList[r];
-                                            stationList[r] = stationTmp;
-                                            jsonSave();
-                                          }                                   
+      if (server.argName(1) == "butt2")  
+            {  // delete a preset
+               byte rem = server.arg(1).toInt(); 
+               if (stationNow >= rem) stationNow--; // move pointer up
+               Serial.printf("--> Should kill station # %u\r\n", rem); 
+               for(byte i = rem; i < stationCnt - 1; i++) stationList[i] = stationList[i + 1];
+               stationCnt--;
+               jsonSave();
+            }
+      if (server.argName(1) == "butt3")  
+            {   // move up
+                byte r = server.arg(1).toInt(); // this one will be moved up 1 position
+                if (stationNow == r) { stationNow = r - 1; } // if we moved the preset currently playing (move pointer up)
+                      else if (stationNow == r - 1) stationNow = r ;
+                stations stationTmp = stationList[r - 1]; // making a copy
+                stationList[r-1] = stationList[r];
+                stationList[r] = stationTmp;
+                jsonSave();
+            }                                   
       }
 
   
@@ -105,7 +107,7 @@ void handleRoot() {
       autoStopH = server.arg(2).substring(0,2).toInt();
       autoStopM = server.arg(2).substring(3,5).toInt();  
       Serial.printf("[handleRoot] autoStartH=%u autoStartM=%u autoStopH=%u autoStopM=%u\r\n", autoStartH, autoStartM, autoStopH, autoStopM);
-      Serial.print("[handleRoot] new autoDow="); Serial.println(autoDoW);
+      Serial.print(F("[handleRoot] new autoDow=")); Serial.println(autoDoW);
       jsonSave();
   }
   
@@ -280,7 +282,7 @@ m += (autoStopM <= 9)?("0"):(""); m += String(autoStopM) +  "\"> device will swi
 
   d = millis() - d;
 
-  if(!getLocalTime(&rtc)){ Serial.println("[updateRtc] Failed to obtain time"); return; }
+  if(!getLocalTime(&rtc)){ Serial.println(F("[updateRtc] Failed to obtain time")); return; }
   rtc_y  = rtc.tm_year + 1900;
   rtc_m  = rtc.tm_mon + 1;
   rtc_d  = rtc.tm_mday;

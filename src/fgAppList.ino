@@ -1,22 +1,19 @@
+// foreground app 2 - station list
+
 void fgAppList() {
   
-  if (fgAppPrev != fgApp) { Serial.println("[fgAppList] Changing mode to LIST"); fgAppPrev = fgApp; stopDisconnect(); jsonSave(); scrUpdateList(); }
-  keyReady = 1;
-
+  if (fgAppPrev != fgApp) { Serial.println("[fgAppList] Changing mode to STATION LIST"); lcd.clear(); fgAppPrev = fgApp; stopDisconnect(); jsonSave(); scrUpdateList(); delay(100);}
+  
   if (stationNow != prevStationNow) {
            scrUpdateList();
            prevStationNow = stationNow;
   }
 
-  if ((keyLast == BUTTON1) && (stationNow >= 1)) { Serial.println("[fgAppList] PREV button pressed"); prevStationNow = stationNow; stationNow-- ; delay(150); /* return; */ }
-  if ((keyLast == BUTTON3) && (stationNow < stationCnt-1)) { Serial.println("[fgAppList] NEXT button pressed"); prevStationNow = stationNow; stationNow++ ; delay(150);  /* return; */ }
+  if ((digitalRead(BUTTON1)) && (stationNow >= 1))           { Serial.println(F("[fgAppList] PREV button pressed")); prevStationNow = stationNow; stationNow-- ; delay(250); }
+  if ((digitalRead(BUTTON3)) && (stationNow < stationCnt-1)) { Serial.println(F("[fgAppList] NEXT button pressed")); prevStationNow = stationNow; stationNow++ ; delay(250);  }
+  if (digitalRead(BUTTON4)) fgAppSwitch();
 
-//  if (keyLast == BUTTON2)  { Serial.println("[fgAppList] PLAY"); fgApp = 1; fgAppPrev = 2; stopDisconnect(); delay(250); } 
 }
-
-
-
-
 
 
 

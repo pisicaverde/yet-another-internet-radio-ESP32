@@ -3,8 +3,6 @@ void wifiConn(){
     // if not connected, nor in station mode, nor while connecting, will try 3 connections; if failed, it will set esp32 to softAp mode
     // calling this is is usually blocking (it may continue play until buffer gets empty
 
-  //if (WiFi.status() == WL_IDLE_STATUS) return; // if function is called by tickers and we're already trying another connection, quit
-    
     if ( (WiFi.status() != WL_CONNECTED) && (softApActive == 0) )  // not connected to any AP nor AP MODE (usually after cold start or reset)
         { 
           WiFi.mode(WIFI_STA); // switch to station mode and tries connecting; TO DO: to add wifi connect timeout (sec) into json; TO DO: wifiMulti-like functionality
@@ -20,7 +18,10 @@ void wifiConn(){
                         updateRtc();                      
                         Serial.println(&rtc, "Success, it is %A, %d %B %Y %H:%M:%S");
                       }
-          if (WiFi.status() == WL_DISCONNECTED )  { // if failed to connect to all 3 prev APs, create it's own AP
+          if (WiFi.status() == WL_DISCONNECTED )  { // if failed to connect to all 3 prev APs, create it's own AP ; 
+            //TO DO: to display something on LCD when AP is created
+            //TO DO: Crashes after creating AP or client connect
+            //TO DO: problems in dhcp server, http server does not serve pages
                Serial.print(F("[wifiConn] CREATING AP "));
                WiFi.mode(WIFI_AP);
                Serial.print(WiFi.softAP(user_agent, ap_pass, wifi_channel, 0, 4) ? " Soft AP created, accepting connections." : " Error creating AP");
@@ -39,6 +40,7 @@ void wifiConn(){
 
 
 boolean tryWifiConnect(char* ssid, char* pass, byte channel, byte sec) {  
+  // this function is blocking !
   // TO DO: SKIP IF RSSI BELOW CERTAIN VAL ; check existence of specified APs before waiting 10s
   // TO DO: return if blank params are received (5 positions in json and only 2 used)
   // TO DO: add channel in json and html config for wifi connection
@@ -46,14 +48,7 @@ boolean tryWifiConnect(char* ssid, char* pass, byte channel, byte sec) {
 
 if ( WiFi.status() == WL_CONNECTED) { Serial.println(F("[tryWifiConnect] already connected to an AP; skipping.")); return(1) ; } // if already connected
 
-////////////
-/*
-Serial.println("HARD CONNECT, SKIPPING OTHERS");
-  WiFi.begin("ssid", "pass");
-  while (WiFi.status() != WL_CONNECTED) { Serial.print("X"); delay(500); }
-return(1);
-*/
-///////////
+// Serial.println("HARD CONNECT, SKIPPING OTHERS"); WiFi.begin("ssid", "pass"); while (WiFi.status() != WL_CONNECTED) { Serial.print("X"); delay(500); } return(1);
 
   Serial.printf("[tryWifiConnect] Trying SSID:%s PASS:%s while %u s ", ssid, pass, sec);
   lcd.setCursor(0,3); lcd.print("Trying:             "); lcd.setCursor (7, 3); lcd.print(ssid); 
@@ -73,10 +68,10 @@ return(1);
       case 3: lcd.print("/"); break;
     };
     c++; if (c == 4) c = 0;
-    delay(300);
+    delay(250);
     Serial.print(".");
   }
-  delay(150);
+  delay(100);
   if (WiFi.status() == WL_CONNECTED) { IPAddress ip = WiFi.localIP(); Serial.print(F("\r\n[tryWifiConnect] Success; my IP is ")); Serial.println(ip) ; return(1); }
                                 else { Serial.println(F("\r\n[tryWifiConnect] Error connecting to this AP (timeout, incorrect password or unknown encription)")); return(0); }
 }

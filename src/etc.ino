@@ -1,5 +1,3 @@
-
-
 int usedBuffer() {
   // the function returns the number of bytes in use in circular buffer
   return(( DATA_BUFFER_SIZE + writePointer - readPointer ) % DATA_BUFFER_SIZE); 
@@ -7,7 +5,7 @@ int usedBuffer() {
 
 
 void updateRtc() {
-  if(!getLocalTime(&rtc)){ Serial.println("[updateRtc] Failed to obtain time"); return; } // this function is called frequently, so there is serial output only on errors
+  if(!getLocalTime(&rtc)){ Serial.println(F("[updateRtc] Failed to obtain time")); return; } // this function is called frequently, so there is serial output only on errors
   rtc_y  = rtc.tm_year + 1900;
   rtc_m  = rtc.tm_mon + 1;
   rtc_d  = rtc.tm_mday;
